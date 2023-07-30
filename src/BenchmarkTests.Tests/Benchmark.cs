@@ -6,27 +6,31 @@ using BenchmarkDotNet.Running;
 
 namespace BenchmarkTests.Tests
 {
-    [Config(typeof(Config))]
-    public class StringTests
+    [SimpleJob(RuntimeMoniker.Net472, baseline: true)]
+    [SimpleJob(RuntimeMoniker.NetCoreApp30)]
+    [SimpleJob(RuntimeMoniker.NativeAot70)]
+    [SimpleJob(RuntimeMoniker.Mono)]
+    [RPlotExporter]
+    public class Md5VsSha256
     {
-        private class Config : ManualConfig
+        private SHA256 sha256 = SHA256.Create();
+        private MD5 md5 = MD5.Create();
+        private byte[] data;
+
+        [Params(1000, 10000)]
+        public int N;
+
+        [GlobalSetup]
+        public void Setup()
         {
-            public Config() => AddDiagnoser(MemoryDiagnoser.Default, new EtwProfiler());
+            data = new byte[N];
+            new Random(42).NextBytes(data);
         }
 
-        [Params(42, 1337)]
-        public int Data;
+        [Benchmark]
+        public byte[] Sha256() => sha256.ComputeHash(data);
 
-        [Benchmark] public string Format() => string.Format("{0:x2}", Data);
-        [Benchmark] public string Interpolate() => $"{Data:x2}";
-        [Benchmark] public string InterpolateExplicit() => $"{Data.ToString("x2")}";
-    }
-
-    class Program
-    {
-        static void Main(string[] args)
-        {
-            var summary = BenchmarkRunner.Run<StringTests>();
-        }
+        [Benchmark]
+        public byte[] Md5() => md5.ComputeHash(data);
     }
 }
